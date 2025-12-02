@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configure Columns - DigiPi Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <style>
+        .columns-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .columns-table th,
+        .columns-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .columns-table th {
+            background: #f5f5f5;
+            font-weight: 600;
+        }
+
+        .columns-table tbody tr {
+            cursor: move;
+            transition: background 0.2s ease;
+        }
+
+        .columns-table tr:hover {
+            background: #f9f9f9;
+        }
+
+        .columns-table tbody tr.dragging {
+            opacity: 0.5;
+        }
+
+        .columns-table tbody tr.drag-over {
+            border-top: 3px solid #667eea;
+        }
+
+        .drag-handle {
+            color: #999;
+            font-size: 18px;
+            cursor: grab;
+            user-select: none;
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: #667eea;
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(26px);
+        }
+
+        select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+        }
+
+        .actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        #save-message {
+            margin-left: 10px;
+            padding: 10px 20px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        #save-message.success {
+            background: #d4edda;
+            color: #155724;
+            display: inline-block;
+        }
+
+        #save-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            display: inline-block;
+        }
+
+        .hint {
+            color: #666;
+            font-size: 0.9em;
+            font-style: italic;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Configure Columns</h1>
+
+        <div class="card">
+            <h2>Column Settings</h2>
+            <p>Configure which columns are visible and how data should be sorted.</p>
+            <p class="hint">💡 Drag rows to reorder columns in the display</p>
+
+            <table class="columns-table">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;"></th>
+                        <th>Column Name</th>
+                        <th>Visible</th>
+                        <th>Sort Order</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for column in columns %}
+                    <tr data-column="{{ column.column_name }}" draggable="true">
+                        <td><span class="drag-handle">⋮⋮</span></td>
+                        <td><strong>{{ column.column_name }}</strong></td>
+                        <td>
+                            <label class="toggle-switch">
+                                <input type="checkbox" class="visible-toggle" {% if column.visible %}checked{% endif %}>
+                                <span class="slider"></span>
+                            </label>
+                        </td>
+                        <td>
+                            <select class="sort-select">
+                                <option value="">No Sort</option>
+                                <option value="1-asc" {% if column.sort_order==1 and column.sort_direction=='asc'
+                                    %}selected{% endif %}>Primary (A→Z)</option>
+                                <option value="1-desc" {% if column.sort_order==1 and column.sort_direction=='desc'
+                                    %}selected{% endif %}>Primary (Z→A)</option>
+                                <option value="2-asc" {% if column.sort_order==2 and column.sort_direction=='asc'
+                                    %}selected{% endif %}>Secondary (A→Z)</option>
+                                <option value="2-desc" {% if column.sort_order==2 and column.sort_direction=='desc'
+                                    %}selected{% endif %}>Secondary (Z→A)</option>
+                            </select>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="actions">
+                <button onclick="saveSettings()" class="btn-primary">Save Settings</button>
+                <a href="{{ url_for('admin.index') }}" class="btn-secondary">Back to Admin</a>
+                <span id="save-message"></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Drag and drop functionality
+        let draggedRow = null;
+
+        const rows = document.querySelectorAll('.columns-table tbody tr');
+
+        rows.forEach(row => {
+            row.addEventListener('dragstart', function (e) {
+                draggedRow = this;
+                this.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+            });
+
+            row.addEventListener('dragend', function (e) {
+                this.classList.remove('dragging');
+                rows.forEach(r => r.classList.remove('drag-over'));
+            });
+
+            row.addEventListener('dragover', function (e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+
+                if (this !== draggedRow) {
+                    this.classList.add('drag-over');
+                }
+            });
+
+            row.addEventListener('dragleave', function (e) {
+                this.classList.remove('drag-over');
+            });
+
+            row.addEventListener('drop', function (e) {
+                e.preventDefault();
+                this.classList.remove('drag-over');
+
+                if (this !== draggedRow) {
+                    const tbody = this.parentNode;
+                    const allRows = Array.from(tbody.querySelectorAll('tr'));
+                    const draggedIndex = allRows.indexOf(draggedRow);
+                    const targetIndex = allRows.indexOf(this);
+
+                    if (draggedIndex < targetIndex) {
+                        this.parentNode.insertBefore(draggedRow, this.nextSibling);
+                    } else {
+                        this.parentNode.insertBefore(draggedRow, this);
+                    }
+                }
+            });
+        });
+
+        async function saveSettings() {
+            const rows = document.querySelectorAll('.columns-table tbody tr');
+            const columnData = [];
+
+            rows.forEach((row, index) => {
+                const columnName = row.dataset.column;
+                const visible = row.querySelector('.visible-toggle').checked;
+                const sortValue = row.querySelector('.sort-select').value;
+
+                let sortOrder = null;
+                let sortDirection = null;
+
+                if (sortValue) {
+                    const [order, direction] = sortValue.split('-');
+                    sortOrder = parseInt(order);
+                    sortDirection = direction;
+                }
+
+                columnData.push({
+                    column_name: columnName,
+                    visible: visible,
+                    sort_order: sortOrder,
+                    sort_direction: sortDirection,
+                    display_order: index
+                });
+            });
+
+            try {
+                const response = await fetch('/admin/columns/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(columnData)
+                });
+
+                const result = await response.json();
+                const messageEl = document.getElementById('save-message');
+
+                if (result.success) {
+                    messageEl.textContent = result.message;
+                    messageEl.className = 'success';
+                    setTimeout(() => {
+                        messageEl.style.display = 'none';
+                    }, 3000);
+                } else {
+                    messageEl.textContent = result.message;
+                    messageEl.className = 'error';
+                }
+            } catch (error) {
+                const messageEl = document.getElementById('save-message');
+                messageEl.textContent = 'Error saving settings';
+                messageEl.className = 'error';
+            }
+        }
+    </script>
+</body>
+
+</html>

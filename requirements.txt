@@ -5,13 +5,17 @@ Flask==3.0.0
 gunicorn==22.0.0  # Production-ready WSGI server
 
 # Data Handling and Database
-pandas==2.1.4     # Used for efficient reading and parsing of the CSV product files
-SQLAlchemy==2.0.25  # Recommended for ORM, though Flask-SQLAlchemy might be used
+pandas>=2.2.0     # Used for efficient reading and parsing of the CSV product files
+SQLAlchemy>=2.0.30  # Recommended for ORM, though Flask-SQLAlchemy might be used
 # Optional: If using Flask-SQLAlchemy for easier integration:
-# Flask-SQLAlchemy==3.1.1
+Flask-SQLAlchemy==3.1.1
 
 # Network/System Tools (for provisioning and hostname)
 # We assume these system dependencies are handled by the OS/installation scripts, 
 # but Python wrappers can be useful for internal management:
 python-dotenv==1.0.0 # For managing environment variables (e.g., secret keys)
-netifaces==0.11.0    # For accessing network interface info (like MAC address)
+# netifaces==0.11.0    # For accessing network interface info (like MAC address)
+
+# QR Code Generation
+qrcode[pil]==8.0
+Pillow>=10.0.0

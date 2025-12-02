@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Display Settings - DigiPi Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <style>
+        .settings-grid {
+            display: grid;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+
+        .setting-label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .setting-description {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        input[type="number"] {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100px;
+        }
+
+        .qr-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f0f2ff;
+            border-radius: 8px;
+        }
+
+        .qr-preview {
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .qr-preview img {
+            max-width: 300px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+        }
+
+        .url-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Display Settings</h1>
+
+        <div class="card">
+            <h2>Kiosk Mode Configuration</h2>
+            <p>Configure automatic pagination and display settings for digital signage.</p>
+
+            <div class="settings-grid">
+                <div class="setting-item">
+                    <div>
+                        <div class="setting-label">Enable Kiosk Mode</div>
+                        <div class="setting-description">Automatically cycle through pages</div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="kiosk-enabled" {% if kiosk_enabled %}checked{% endif %}>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-item">
+                    <div>
+                        <div class="setting-label">Items Per Page</div>
+                        <div class="setting-description">Number of products to show per page</div>
+                    </div>
+                    <input type="number" id="items-per-page" value="{{ items_per_page }}" min="1" max="50">
+                </div>
+
+                <div class="setting-item">
+                    <div>
+                        <div class="setting-label">Page Duration (seconds)</div>
+                        <div class="setting-description">How long to display each page</div>
+                    </div>
+                    <input type="number" id="page-duration" value="{{ page_duration }}" min="3" max="60">
+                </div>
+            </div>
+
+            <div class="qr-section">
+                <h3>QR Code for Menu Access</h3>
+                <p>Generate a QR code for customers to access the menu on their devices.</p>
+
+                <label for="menu-url">Menu URL:</label>
+                <input type="text" id="menu-url" class="url-input" value="http://digipi.local/"
+                    placeholder="http://digipi.local/">
+
+                <button onclick="generateQR()" class="btn-primary" style="margin-top: 10px;">Generate QR Code</button>
+
+                <div class="qr-preview" id="qr-preview">
+                    {% if qr_exists %}
+                    <img src="{{ url_for('static', filename='uploads/menu_qr.png') }}?{{ range(1000) | random }}"
+                        alt="Menu QR Code">
+                    {% else %}
+                    <p style="color: #666;">No QR code generated yet</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="actions">
+                <button onclick="saveSettings()" class="btn-primary">Save Settings</button>
+                <a href="{{ url_for('admin.index') }}" class="btn-secondary">Back to Admin</a>
+                <span id="save-message"></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function saveSettings() {
+            const settings = {
+                kiosk_enabled: document.getElementById('kiosk-enabled').checked,
+                items_per_page: parseInt(document.getElementById('items-per-page').value),
+                page_duration: parseInt(document.getElementById('page-duration').value)
+            };
+
+            try {
+                const response = await fetch('/admin/display/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(settings)
+                });
+
+                const result = await response.json();
+                const messageEl = document.getElementById('save-message');
+
+                if (result.success) {
+                    messageEl.textContent = result.message;
+                    messageEl.className = 'success';
+                    setTimeout(() => {
+                        messageEl.style.display = 'none';
+                    }, 3000);
+                } else {
+                    messageEl.textContent = result.message;
+                    messageEl.className = 'error';
+                }
+            } catch (error) {
+                const messageEl = document.getElementById('save-message');
+                messageEl.textContent = 'Error saving settings';
+                messageEl.className = 'error';
+            }
+        }
+
+        async function generateQR() {
+            const url = document.getElementById('menu-url').value;
+
+            try {
+                const response = await fetch('/admin/display/generate-qr', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ url: url })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Reload QR preview with cache busting
+                    const qrPreview = document.getElementById('qr-preview');
+                    qrPreview.innerHTML = `<img src="${result.path}?${Date.now()}" alt="Menu QR Code">`;
+
+                    const messageEl = document.getElementById('save-message');
+                    messageEl.textContent = 'QR code generated!';
+                    messageEl.className = 'success';
+                    setTimeout(() => {
+                        messageEl.style.display = 'none';
+                    }, 3000);
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                alert('Error generating QR code');
+            }
+        }
+    </script>
+</body>
+
+</html>

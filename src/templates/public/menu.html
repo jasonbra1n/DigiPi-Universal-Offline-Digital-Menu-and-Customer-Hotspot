@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DigiPi Menu</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/menu.css') }}">
+    <style>
+        /* Kiosk mode specific styles */
+        body.kiosk-mode {
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .kiosk-mode .container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .kiosk-mode #menu-content {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .kiosk-mode .product-table {
+            flex: 1;
+        }
+
+        .page-indicators {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .page-dot {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ccc;
+            margin: 0 5px;
+            transition: all 0.3s ease;
+        }
+
+        .page-dot.active {
+            background: #667eea;
+            transform: scale(1.3);
+        }
+
+        .page-content {
+            display: none;
+        }
+
+        .page-content.active {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Product Menu</h1>
+        <div id="menu-content">
+            <p class="loading">Loading menu...</p>
+        </div>
+        <div id="page-indicators" class="page-indicators" style="display: none;"></div>
+    </div>
+
+    <script>
+        let kioskMode = false;
+        let itemsPerPage = 10;
+        let pageDuration = 10;
+        let currentPage = 0;
+        let totalPages = 0;
+        let pageTimer = null;
+        let allProducts = [];
+
+        async function loadSettings() {
+            try {
+                const response = await fetch('/api/settings');
+                const settings = await response.json();
+                kioskMode = settings.kiosk_enabled;
+                itemsPerPage = settings.items_per_page;
+                pageDuration = settings.page_duration * 1000; // Convert to milliseconds
+
+                if (kioskMode) {
+                    document.body.classList.add('kiosk-mode');
+                }
+            } catch (error) {
+                console.error('Error loading settings:', error);
+            }
+        }
+
+        async function loadMenu() {
+            try {
+                const response = await fetch('/api/products');
+                const result = await response.json();
+
+                const menuContent = document.getElementById('menu-content');
+
+                if (!result.data || result.data.length === 0) {
+                    menuContent.innerHTML = '<p class="no-data">No products available. Please upload data via the admin panel.</p>';
+                    return;
+                }
+
+                const headers = result.headers;
+                allProducts = result.data;
+
+                if (kioskMode) {
+                    renderKioskMode(headers, allProducts);
+                } else {
+                    renderNormalMode(headers, allProducts);
+                }
+            } catch (error) {
+                document.getElementById('menu-content').innerHTML =
+                    '<p class="error">Error loading menu data.</p>';
+                console.error('Error:', error);
+            }
+        }
+
+        function renderNormalMode(headers, products) {
+            const menuContent = document.getElementById('menu-content');
+
+            let html = '<table class="product-table">';
+            html += '<thead><tr>';
+            headers.forEach(header => {
+                html += `<th>${header}</th>`;
+            });
+            html += '</tr></thead>';
+
+            html += '<tbody>';
+            products.forEach(rowData => {
+                html += '<tr>';
+                rowData.forEach(cellValue => {
+                    html += `<td>${cellValue !== null && cellValue !== undefined ? cellValue : ''}</td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+
+            menuContent.innerHTML = html;
+        }
+
+        function renderKioskMode(headers, products) {
+            const menuContent = document.getElementById('menu-content');
+            totalPages = Math.ceil(products.length / itemsPerPage);
+
+            let html = '';
+
+            // Create pages
+            for (let page = 0; page < totalPages; page++) {
+                const start = page * itemsPerPage;
+                const end = Math.min(start + itemsPerPage, products.length);
+                const pageProducts = products.slice(start, end);
+
+                html += `<div class="page-content ${page === 0 ? 'active' : ''}" data-page="${page}">`;
+                html += '<table class="product-table">';
+                html += '<thead><tr>';
+                headers.forEach(header => {
+                    html += `<th>${header}</th>`;
+                });
+                html += '</tr></thead>';
+
+                html += '<tbody>';
+                pageProducts.forEach(rowData => {
+                    html += '<tr>';
+                    rowData.forEach(cellValue => {
+                        html += `<td>${cellValue !== null && cellValue !== undefined ? cellValue : ''}</td>`;
+                    });
+                    html += '</tr>';
+                });
+                html += '</tbody></table>';
+                html += '</div>';
+            }
+
+            menuContent.innerHTML = html;
+
+            // Show page indicators
+            if (totalPages > 1) {
+                const indicators = document.getElementById('page-indicators');
+                let dotsHtml = '';
+                for (let i = 0; i < totalPages; i++) {
+                    dotsHtml += `<span class="page-dot ${i === 0 ? 'active' : ''}" data-page="${i}"></span>`;
+                }
+                indicators.innerHTML = dotsHtml;
+                indicators.style.display = 'block';
+
+                // Start auto-pagination
+                startAutoPagination();
+            }
+        }
+
+        function startAutoPagination() {
+            if (pageTimer) {
+                clearInterval(pageTimer);
+            }
+
+            pageTimer = setInterval(() => {
+                currentPage = (currentPage + 1) % totalPages;
+                showPage(currentPage);
+            }, pageDuration);
+        }
+
+        function showPage(pageIndex) {
+            // Hide all pages
+            document.querySelectorAll('.page-content').forEach(page => {
+                page.classList.remove('active');
+            });
+
+            // Show current page
+            const currentPageEl = document.querySelector(`.page-content[data-page="${pageIndex}"]`);
+            if (currentPageEl) {
+                currentPageEl.classList.add('active');
+            }
+
+            // Update indicators
+            document.querySelectorAll('.page-dot').forEach((dot, index) => {
+                if (index === pageIndex) {
+                    dot.classList.add('active');
+                } else {
+                    dot.classList.remove('active');
+                }
+            });
+        }
+
+        // Initialize
+        async function init() {
+            await loadSettings();
+            await loadMenu();
+        }
+
+        init();
+    </script>
+</body>
+
+</html>
