@@ -39,3 +39,12 @@ This roadmap is organized into three phases, starting with the core functionalit
 | **P4.2 Cloud Menu Builder** | Web-based version of the Admin Panel. | Users can upload CSVs and configure menus via a public website instead of a local IP. |
 | **P4.3 Screen-as-a-Service** | Direct-to-Cloud display mode. | Unique public URLs (e.g., `app.digipi.io/s/store-name`) to run menus on Smart TVs without local hardware. |
 | **P4.4 Hybrid Sync** | Bridge local offline units with the cloud. | Mechanism for local DigiPi units to pull configs from the cloud account or push analytics up. |
+
+## Phase 4: Cloud SaaS & Centralized Management (Long Term)
+
+| Goal | Description | Deliverables |
+| :--- | :--- | :--- |
+| **P4.1 Cloud Platform Core** | Establish a centralized, multi-tenant web platform. | SaaS infrastructure; User accounts/Auth; Subscription billing integration (e.g., Stripe). |
+| **P4.2 Cloud Menu Builder** | Web-based version of the Admin Panel. | Users can upload CSVs and configure menus via a public website instead of a local IP. |
+| **P4.3 Screen-as-a-Service** | Direct-to-Cloud display mode. | Unique public URLs (e.g., `app.digipi.io/s/store-name`) to run menus on Smart TVs without local hardware. |
+| **P4.4 Hybrid Sync** | Bridge local offline units with the cloud. | Mechanism for local DigiPi units to pull configs from the cloud account or push analytics up. |

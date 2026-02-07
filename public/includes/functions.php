@@ -4,11 +4,11 @@ require_once __DIR__ . '/../config.php';
 /**
  * Fetch a specific setting value from the database.
  */
-function get_setting($key) {
+function get_setting($key, $store_id = 1) {
     global $pdo;
     try {
-        $stmt = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_key = ?");
-        $stmt->execute([$key]);
+        $stmt = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_key = ? AND store_id = ?");
+        $stmt->execute([$key, $store_id]);
         return $stmt->fetchColumn();
     } catch (PDOException $e) {
         return null;
@@ -18,10 +18,12 @@ function get_setting($key) {
 /**
  * Get the total count of products in the database.
  */
-function get_product_count() {
+function get_product_count($store_id = 1) {
     global $pdo;
     try {
-        return $pdo->query("SELECT COUNT(*) FROM products")->fetchColumn();
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM products WHERE store_id = ?");
+        $stmt->execute([$store_id]);
+        return $stmt->fetchColumn();
     } catch (PDOException $e) {
         return 0;
     }

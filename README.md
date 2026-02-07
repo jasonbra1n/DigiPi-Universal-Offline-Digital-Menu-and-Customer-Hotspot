@@ -82,6 +82,19 @@ Access the management portal from any device on the private network:
 
 ---
 
+## 🗺️ Roadmap
+
+We are currently in **Phase 1 (MVP)**.
+
+*   **Phase 1: MVP Core (Current Focus)** - Basic LAMP stack, CSV ingestion, Admin Panel, and local display.
+*   **Phase 2: Universal Adaptability** - Dynamic column mapping, advanced sorting, multi-view support, and visual theming.
+*   **Phase 3: Customer Engagement** - Public Wi-Fi Hotspot, Captive Portal, and Head Office sync foundation.
+*   **Phase 4: Cloud SaaS (Long Term)** - Centralized multi-tenant platform, web-based menu builder, and hybrid cloud sync.
+
+See docs/ROADMAP.md for detailed tracking.
+
+---
+
 ## 🤝 Contributing
 
 DigiPi is an open-source project. We welcome contributions from developers, designers, and documentation writers!
